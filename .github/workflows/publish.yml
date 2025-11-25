@@ -43,6 +43,7 @@ jobs:
             exit 1
           fi
           head -n 1 dist/index.js | grep -q "^#!" || (echo "Error: Missing shebang in dist/index.js" && exit 1)
+          chmod +x dist/index.js
 
   publish:
     needs: build-and-test
