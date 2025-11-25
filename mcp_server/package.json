@@ -2,6 +2,7 @@
   "name": "@lpenguin/godot-mcp",
   "version": "1.0.0",
   "description": "MCP server for generating Godot ResourceUID strings via TCP connection to Godot Editor",
+  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "godot-mcp": "./dist/index.js"
