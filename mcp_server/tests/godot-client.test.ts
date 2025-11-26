@@ -127,7 +127,7 @@ describe('GodotClient Integration Tests', () => {
       });
 
       await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(
-        'Invalid response format from Godot'
+        'Invalid response: missing UID'
       );
     });
 
