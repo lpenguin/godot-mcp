@@ -17,7 +17,7 @@ export class GodotClient {
     this.timeout = timeout;
   }
 
-  private async sendCommand(command: string, args: Record<string, any>): Promise<GodotResponse> {
+  private async sendCommand(command: string, args: Record<string, unknown>): Promise<GodotResponse> {
     return new Promise((resolve, reject) => {
       const client = new net.Socket();
       let responseData = '';
