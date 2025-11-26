@@ -22,7 +22,7 @@ export class MockGodotServer {
             // Default behavior: parse request and return success
             try {
               const parsed = JSON.parse(request.trim());
-              if (parsed.command === 'get_new_uid') {
+              if (parsed.command === 'get_path_uid') {
                 const response = JSON.stringify({
                   status: 'success',
                   uid: 'uid://test1234567890'

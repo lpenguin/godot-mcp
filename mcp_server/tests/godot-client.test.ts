@@ -20,14 +20,15 @@ describe('GodotClient Integration Tests', () => {
       
       mockServer.setResponseHandler((data) => {
         const request = JSON.parse(data.trim());
-        expect(request.command).toBe('get_new_uid');
+        expect(request.command).toBe('get_path_uid');
+        expect(request.args).toEqual({ path: 'res://scenes/player.tscn' });
         return JSON.stringify({
           status: 'success',
           uid: 'uid://test1234567890'
         }) + '\n';
       });
 
-      const uid = await client.getNewUID();
+      const uid = await client.getPathUID('res://scenes/player.tscn');
       expect(uid).toBe('uid://test1234567890');
     });
 
@@ -42,15 +43,32 @@ describe('GodotClient Integration Tests', () => {
         }) + '\n';
       });
 
-      const uid = await client.getNewUID();
+      const uid = await client.getPathUID('res://textures/icon.png');
       expect(uid).toBe(testUID);
+    });
+
+    test('should handle different resource paths', async () => {
+      await mockServer.start();
+      
+      mockServer.setResponseHandler((data) => {
+        const request = JSON.parse(data.trim());
+        expect(request.command).toBe('get_path_uid');
+        expect(request.args.path).toBe('res://materials/metal.tres');
+        return JSON.stringify({
+          status: 'success',
+          uid: 'uid://xyz123'
+        }) + '\n';
+      });
+
+      const uid = await client.getPathUID('res://materials/metal.tres');
+      expect(uid).toBe('uid://xyz123');
     });
   });
 
   describe('Connection Refused Scenarios', () => {
     test('should return user-friendly error when server is not running', async () => {
       // Don't start the mock server
-      await expect(client.getNewUID()).rejects.toThrow(
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(
         'Cannot connect to Godot Editor. Please open Godot Editor with the MCP Bridge plugin enabled.'
       );
     });
@@ -64,7 +82,7 @@ describe('GodotClient Integration Tests', () => {
         return 'This is not JSON\n';
       });
 
-      await expect(client.getNewUID()).rejects.toThrow(
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(
         /Failed to parse response from Godot/
       );
     });
@@ -80,7 +98,7 @@ describe('GodotClient Integration Tests', () => {
         });
       });
 
-      await expect(client.getNewUID()).rejects.toThrow(/timeout/i);
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(/timeout/i);
     }, 3000);
 
     test('should handle error response from server', async () => {
@@ -93,7 +111,7 @@ describe('GodotClient Integration Tests', () => {
         }) + '\n';
       });
 
-      await expect(client.getNewUID()).rejects.toThrow(
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(
         'Godot error: Something went wrong'
       );
     });
@@ -108,7 +126,7 @@ describe('GodotClient Integration Tests', () => {
         }) + '\n';
       });
 
-      await expect(client.getNewUID()).rejects.toThrow(
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(
         'Invalid response format from Godot'
       );
     });
@@ -123,7 +141,7 @@ describe('GodotClient Integration Tests', () => {
         }) + '\n';
       });
 
-      await expect(client.getNewUID()).rejects.toThrow(
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(
         'Invalid response format from Godot'
       );
     });
@@ -138,7 +156,7 @@ describe('GodotClient Integration Tests', () => {
         return '';
       });
 
-      await expect(client.getNewUID()).rejects.toThrow(/timeout/i);
+      await expect(client.getPathUID('res://test.tscn')).rejects.toThrow(/timeout/i);
     }, 3000);
   });
 });
