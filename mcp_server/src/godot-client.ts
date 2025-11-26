@@ -17,7 +17,7 @@ export class GodotClient {
     this.timeout = timeout;
   }
 
-  async getPathUID(path: string): Promise<string> {
+  private async sendCommand(command: string, args: Record<string, any>): Promise<GodotResponse> {
     return new Promise((resolve, reject) => {
       const client = new net.Socket();
       let responseData = '';
@@ -37,8 +37,8 @@ export class GodotClient {
           try {
             const response: GodotResponse = JSON.parse(responseData.trim());
 
-            if (response.status === 'success' && response.uid) {
-              resolve(response.uid);
+            if (response.status === 'success') {
+              resolve(response);
             } else if (response.status === 'error') {
               reject(new Error(`Godot error: ${response.message || 'Unknown error'}`));
             } else {
@@ -65,9 +65,22 @@ export class GodotClient {
 
       // Connect and send request
       client.connect(this.port, this.host, () => {
-        const request = { command: 'get_path_uid', args: { path } };
+        const request = { command, args };
         client.write(JSON.stringify(request) + '\n');
       });
     });
+  }
+
+  async getPathUID(path: string): Promise<string> {
+    const response = await this.sendCommand('get_path_uid', { path });
+    if (!response.uid) {
+      throw new Error('Invalid response: missing UID');
+    }
+    return response.uid;
+  }
+
+  async rescanFilesystem(): Promise<string> {
+    const response = await this.sendCommand('rescan_filesystem', {});
+    return response.message || 'Filesystem rescan initiated';
   }
 }

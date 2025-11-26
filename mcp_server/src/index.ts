@@ -37,6 +37,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['path'],
         },
       },
+      {
+        name: 'rescan_godot_filesystem',
+        description: 'Trigger a filesystem rescan in the Godot Editor to detect new, modified, or deleted files in the project.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
     ],
   };
 });
@@ -64,6 +73,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: 'text',
             text: uid,
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${errorMessage}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  if (request.params.name === 'rescan_godot_filesystem') {
+    try {
+      const message = await godotClient.rescanFilesystem();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: message,
           },
         ],
       };

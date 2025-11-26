@@ -84,6 +84,8 @@ func _handle_request(connection: StreamPeerTCP, data: String) -> void:
 	
 	if command == "get_path_uid":
 		_handle_get_path_uid(connection, args)
+	elif command == "rescan_filesystem":
+		_handle_rescan_filesystem(connection, args)
 	else:
 		_send_error(connection, "Unknown command: %s" % command)
 
@@ -115,6 +117,17 @@ func _handle_get_path_uid(connection: StreamPeerTCP, args: Dictionary) -> void:
 	var response = {
 		"status": "success",
 		"uid": uid
+	}
+	
+	_send_response(connection, response)
+
+func _handle_rescan_filesystem(connection: StreamPeerTCP, args: Dictionary) -> void:
+	EditorInterface.get_resource_filesystem().scan()
+	print("[MCP Bridge] Filesystem rescan triggered")
+	
+	var response = {
+		"status": "success",
+		"message": "Filesystem rescan initiated"
 	}
 	
 	_send_response(connection, response)
