@@ -25,10 +25,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'generate_godot_uid',
-        description: 'Generate a new Godot ResourceUID string by connecting to a running Godot Editor instance via TCP',
+        description: 'Generate or retrieve a Godot ResourceUID string for a given resource path by connecting to a running Godot Editor instance via TCP. The plugin caches UIDs for paths and reuses existing ones when available.',
         inputSchema: {
           type: 'object',
-          properties: {},
+          properties: {
+            path: {
+              type: 'string',
+              description: 'The resource path (e.g., "res://scenes/player.tscn" or "res://textures/icon.png")',
+            },
+          },
+          required: ['path'],
         },
       },
     ],
@@ -38,7 +44,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === 'generate_godot_uid') {
     try {
-      const uid = await godotClient.getNewUID();
+      const path = request.params.arguments?.path as string | undefined;
+      
+      if (!path || typeof path !== 'string') {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Error: Missing required parameter "path". Please provide a resource path (e.g., "res://scenes/player.tscn")',
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const uid = await godotClient.getPathUID(path);
       return {
         content: [
           {

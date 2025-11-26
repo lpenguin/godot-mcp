@@ -1,6 +1,6 @@
 # Godot ResourceUID MCP Server & Plugin
 
-A monorepo containing a Godot 4 Editor Plugin and a TypeScript MCP (Model Context Protocol) Server that allows AI agents to generate valid Godot `uid://` strings by communicating with a running Godot Editor instance via TCP.
+A monorepo containing a Godot 4 Editor Plugin and a TypeScript MCP (Model Context Protocol) Server that allows AI agents to generate and manage valid Godot `uid://` strings by communicating with a running Godot Editor instance via TCP. The system intelligently caches UIDs for resource paths and reuses existing ones.
 
 ## 📦 Repository Structure
 
@@ -52,7 +52,12 @@ The Godot plugin creates a TCP server that listens on port 8085 for JSON command
 
 **Request Format:**
 ```json
-{"command": "get_new_uid"}
+{
+  "command": "get_path_uid",
+  "args": {
+    "path": "res://scenes/player.tscn"
+  }
+}
 ```
 
 **Response Format:**
@@ -63,19 +68,31 @@ The Godot plugin creates a TCP server that listens on port 8085 for JSON command
 }
 ```
 
-The plugin uses Godot's built-in `ResourceUID` API to generate unique identifiers:
+The plugin uses Godot's built-in `ResourceUID` API with intelligent caching:
 ```gdscript
-var new_id = ResourceUID.create_id()
-var uid_string = ResourceUID.id_to_text(new_id)
+# Check if UID already exists for this path
+if path_to_uid.has(path):
+    return path_to_uid[path]  # Return cached UID
+else:
+    var cached_uid = ResourceUID.path_to_uid(path)
+    if cached_uid != path:  # Path has existing UID
+        return cached_uid
+    else:  # Generate new UID
+        var new_id = ResourceUID.create_id()
+        var uid_string = ResourceUID.id_to_text(new_id)
+        ResourceUID.add_id(new_id, path)
+        path_to_uid[path] = uid_string
+        return uid_string
 ```
 
 ### MCP Server (TCP Client)
 
 The MCP server provides a `generate_godot_uid` tool that:
-1. Connects to `localhost:8085` via TCP
-2. Sends the `get_new_uid` command
-3. Receives and returns the generated UID string
-4. Handles errors gracefully (connection refused, timeouts, malformed data)
+1. Accepts a `path` parameter (e.g., `"res://scenes/player.tscn"`)
+2. Connects to `localhost:8085` via TCP
+3. Sends the `get_path_uid` command with the path
+4. Receives and returns the generated or cached UID string
+5. Handles errors gracefully (connection refused, timeouts, malformed data)
 
 ## 🧪 Development
 
@@ -175,10 +192,10 @@ Add to your Claude Desktop config:
 
 Then in Claude:
 ```
-"Generate a new Godot ResourceUID"
+"Generate a Godot ResourceUID for res://scenes/player.tscn"
 ```
 
-Claude will use the `generate_godot_uid` tool and return a valid `uid://` string.
+Claude will use the `generate_godot_uid` tool and return a valid `uid://` string. The same path will always return the same UID.
 
 ## 🤝 Contributing
 

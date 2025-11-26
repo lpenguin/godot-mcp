@@ -5,6 +5,8 @@ var tcp_server: TCPServer
 var server_port: int = 8085
 var active_connections: Array[StreamPeerTCP] = []
 
+var path_to_uid: Dictionary[String, String] = {}
+
 func _enter_tree() -> void:
 	tcp_server = TCPServer.new()
 	var err = tcp_server.listen(server_port)
@@ -74,20 +76,45 @@ func _handle_request(connection: StreamPeerTCP, data: String) -> void:
 		return
 	
 	var command = request["command"]
+	var args = request["args"] if request.has("args") else {}
+
+	if typeof(args) != TYPE_DICTIONARY:
+		_send_error(connection, "'args' field must be a JSON object")
+		return
 	
-	if command == "get_new_uid":
-		_handle_get_new_uid(connection)
+	if command == "get_path_uid":
+		_handle_get_path_uid(connection, args)
 	else:
 		_send_error(connection, "Unknown command: %s" % command)
 
-func _handle_get_new_uid(connection: StreamPeerTCP) -> void:
-	# Generate a new ResourceUID
-	var new_id = ResourceUID.create_id()
-	var uid_string = ResourceUID.id_to_text(new_id)
+func _handle_get_path_uid(connection: StreamPeerTCP, args: Dictionary) -> void:
+	var path = args.get("path")
+	if path == null or typeof(path) != TYPE_STRING:
+		_send_error(connection, "Missing or invalid 'path' argument")
+		return
 	
+	var uid: String
+	# Check if we already have a UID for this path
+	if path_to_uid.has(path):
+		uid = path_to_uid[path]
+		print("[MCP Bridge] Found cached UID for path %s: %s" % [path, uid])
+	else:
+		var cached_uid = ResourceUID.path_to_uid(path)
+		if cached_uid != path: # path is valid and has a UID
+			uid = cached_uid
+			print("[MCP Bridge] Found existing UID for path %s: %s" % [path, uid])
+		else:
+			# Generate a new UID
+			var new_id = ResourceUID.create_id()
+			uid = ResourceUID.id_to_text(new_id)
+			ResourceUID.add_id(new_id, path)
+			print("[MCP Bridge] Generated new UID for path %s: %s" % [path, uid])
+		# Cache the UID
+		path_to_uid[path] = uid
+
 	var response = {
 		"status": "success",
-		"uid": uid_string
+		"uid": uid
 	}
 	
 	_send_response(connection, response)

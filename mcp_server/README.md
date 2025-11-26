@@ -1,6 +1,6 @@
 # @lpenguin/godot-mcp
 
-An MCP (Model Context Protocol) server that generates valid Godot ResourceUID strings by communicating with a running Godot Editor instance via TCP.
+An MCP (Model Context Protocol) server that generates and manages Godot ResourceUID strings by communicating with a running Godot Editor instance via TCP. The server can create new UIDs for resource paths or retrieve existing ones, with automatic caching in the Godot Editor.
 
 ## Installation
 
@@ -52,7 +52,7 @@ Add to your Claude Desktop configuration file:
 Restart Claude Desktop. You can now ask Claude to generate Godot UIDs:
 
 ```
-"Generate a new Godot ResourceUID for my resource"
+"Generate a Godot ResourceUID for res://scenes/player.tscn"
 ```
 
 ### With Other MCP Clients
@@ -61,21 +61,27 @@ The server implements the MCP protocol and provides a single tool:
 
 **Tool**: `generate_godot_uid`
 
-**Description**: Generate a new Godot ResourceUID string
+**Description**: Generate or retrieve a Godot ResourceUID string for a given resource path
 
-**Input**: No parameters required
+**Input**: 
+- `path` (required): The resource path (e.g., `"res://scenes/player.tscn"` or `"res://textures/icon.png"`)
 
 **Output**: A valid Godot UID string (e.g., `uid://dmbxm1qp5555x`)
 
 ## How It Works
 
 1. The MCP server connects to `localhost:8085` via TCP
-2. Sends a JSON command: `{"command": "get_new_uid"}`
-3. The Godot plugin receives the command and executes:
-   ```gdscript
-   var new_id = ResourceUID.create_id()
-   var uid_string = ResourceUID.id_to_text(new_id)
-   ```
+2. Sends a JSON command: `{"command": "get_path_uid", "args": {"path": "res://scenes/player.tscn"}}`
+3. The Godot plugin:
+   - Checks if a UID already exists for this path (in cache or ResourceUID system)
+   - If found, returns the cached UID
+   - If not found, generates a new UID and registers it:
+     ```gdscript
+     var new_id = ResourceUID.create_id()
+     var uid_string = ResourceUID.id_to_text(new_id)
+     ResourceUID.add_id(new_id, path)
+     ```
+   - Caches the UID for future requests
 4. Returns the UID to the MCP server
 5. The MCP server returns it to the AI agent
 

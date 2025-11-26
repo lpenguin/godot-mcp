@@ -1,6 +1,6 @@
 # Godot Plugin Installation
 
-This plugin provides a TCP bridge for the Model Context Protocol (MCP) server to generate Godot ResourceUID strings.
+This plugin provides a TCP bridge for the Model Context Protocol (MCP) server to generate and manage Godot ResourceUID strings. It intelligently caches UIDs for resource paths and reuses existing ones when available.
 
 ## Installation
 
@@ -41,7 +41,12 @@ Once enabled, the plugin will accept TCP connections on port 8085 and respond to
 
 **Request:**
 ```json
-{"command": "get_new_uid"}
+{
+  "command": "get_path_uid",
+  "args": {
+    "path": "res://scenes/player.tscn"
+  }
+}
 ```
 
 **Response:**
@@ -51,6 +56,14 @@ Once enabled, the plugin will accept TCP connections on port 8085 and respond to
   "uid": "uid://dmbxm1qp5555x"
 }
 ```
+
+### How UIDs are Managed
+
+1. **First request for a path**: A new UID is generated and registered with Godot's ResourceUID system
+2. **Subsequent requests**: The cached UID is returned
+3. **Existing resources**: If the path already has a UID in Godot's system, it's reused
+
+This ensures consistent UIDs across your project and prevents duplicate UID generation.
 
 ## Troubleshooting
 

@@ -17,7 +17,7 @@ export class GodotClient {
     this.timeout = timeout;
   }
 
-  async getNewUID(): Promise<string> {
+  async getPathUID(path: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const client = new net.Socket();
       let responseData = '';
@@ -65,7 +65,7 @@ export class GodotClient {
 
       // Connect and send request
       client.connect(this.port, this.host, () => {
-        const request = { command: 'get_new_uid' };
+        const request = { command: 'get_path_uid', args: { path } };
         client.write(JSON.stringify(request) + '\n');
       });
     });
