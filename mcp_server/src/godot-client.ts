@@ -83,4 +83,9 @@ export class GodotClient {
     const response = await this.sendCommand('rescan_filesystem', {});
     return response.message || 'Filesystem rescan initiated';
   }
+
+  async moveResource(fromPath: string, toPath: string): Promise<string> {
+    const response = await this.sendCommand('move_resource', { from_path: fromPath, to_path: toPath });
+    return response.message || `Successfully moved ${fromPath} to ${toPath}`;
+  }
 }

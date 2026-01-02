@@ -63,6 +63,23 @@ describe('GodotClient Integration Tests', () => {
       const uid = await client.getPathUID('res://materials/metal.tres');
       expect(uid).toBe('uid://xyz123');
     });
+
+    test('should successfully move a resource', async () => {
+      await mockServer.start();
+      
+      mockServer.setResponseHandler((data) => {
+        const request = JSON.parse(data.trim());
+        expect(request.command).toBe('move_resource');
+        expect(request.args).toEqual({ from_path: 'res://old.tscn', to_path: 'res://new.tscn' });
+        return JSON.stringify({
+          status: 'success',
+          message: 'Successfully moved: res://old.tscn -> res://new.tscn'
+        }) + '\n';
+      });
+
+      const message = await client.moveResource('res://old.tscn', 'res://new.tscn');
+      expect(message).toBe('Successfully moved: res://old.tscn -> res://new.tscn');
+    });
   });
 
   describe('Connection Refused Scenarios', () => {

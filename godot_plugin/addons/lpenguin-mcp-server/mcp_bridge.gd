@@ -86,6 +86,8 @@ func _handle_request(connection: StreamPeerTCP, data: String) -> void:
 		_handle_get_path_uid(connection, args)
 	elif command == "rescan_filesystem":
 		_handle_rescan_filesystem(connection, args)
+	elif command == "move_resource":
+		_handle_move_resource(connection, args)
 	else:
 		_send_error(connection, "Unknown command: %s" % command)
 
@@ -130,6 +132,74 @@ func _handle_rescan_filesystem(connection: StreamPeerTCP, args: Dictionary) -> v
 		"message": "Filesystem rescan initiated"
 	}
 	
+	_send_response(connection, response)
+
+func _handle_move_resource(connection: StreamPeerTCP, args: Dictionary) -> void:
+	var from_path = args.get("from_path")
+	var to_path = args.get("to_path")
+	
+	if from_path == null or typeof(from_path) != TYPE_STRING:
+		_send_error(connection, "Missing or invalid 'from_path' argument")
+		return
+	if to_path == null or typeof(to_path) != TYPE_STRING:
+		_send_error(connection, "Missing or invalid 'to_path' argument")
+		return
+
+	if from_path == to_path:
+		_send_error(connection, "Source and destination are the same.")
+		return
+
+	if not FileAccess.file_exists(from_path):
+		_send_error(connection, "Source file does not exist: " + from_path)
+		return
+
+	# 1. Ensure the destination directory exists
+	var dir = DirAccess.open("res://")
+	var dest_dir = to_path.get_base_dir()
+	if not dir.dir_exists(dest_dir):
+		dir.make_dir_recursive(dest_dir)
+
+
+	# 2. Perform the physical move of the main file
+	var res = ResourceLoader.load(from_path)
+	if res == null:
+		_send_error(connection, "Failed to load resource at: " + from_path)
+		return
+
+	# Take over the path to avoid conflicts
+	res.take_over_path(to_path)
+	
+	var err = dir.rename(from_path, to_path)
+	if err != OK:
+		_send_error(connection, "Failed to move file. Error code: %d" % err)
+		return
+	
+	# 3. Handle the .import sidecar file
+	var from_import = from_path + ".import"
+	var to_import = to_path + ".import"
+	if FileAccess.file_exists(from_import):
+		dir.rename(from_import, to_import)
+		print("[MCP Bridge] Moved .import file.")
+
+	# 4. Handle the .uid file (if it exists)
+	var from_uid = from_path + ".uid"
+	var to_uid = to_path + ".uid"
+	if FileAccess.file_exists(from_uid):
+		dir.rename(from_uid, to_uid)
+		print("[MCP Bridge] Moved .uid file.")
+
+	# 5. Update Godot's internal database
+	var efs = EditorInterface.get_resource_filesystem()
+
+	# 6. Final Sync
+	efs.scan()
+	
+	print("[MCP Bridge] Successfully moved: %s -> %s" % [from_path, to_path])
+	
+	var response = {
+		"status": "success",
+		"message": "Successfully moved: %s -> %s" % [from_path, to_path]
+	}
 	_send_response(connection, response)
 
 func _send_response(connection: StreamPeerTCP, response: Dictionary) -> void:

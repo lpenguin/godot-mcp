@@ -46,6 +46,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: [],
         },
       },
+      {
+        name: 'move_godot_resource',
+        description: 'Move a resource file (and its .import/.uid sidecars) to a new location and update Godot internal references.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            from_path: {
+              type: 'string',
+              description: 'The source path of the resource (e.g., "res://scenes/player.tscn")',
+            },
+            to_path: {
+              type: 'string',
+              description: 'The destination path (e.g., "res://scenes/characters/player.tscn")',
+            },
+          },
+          required: ['from_path', 'to_path'],
+        },
+      },
     ],
   };
 });
@@ -93,6 +111,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === 'rescan_godot_filesystem') {
     try {
       const message = await godotClient.rescanFilesystem();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: message,
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${errorMessage}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  if (request.params.name === 'move_godot_resource') {
+    try {
+      const fromPath = request.params.arguments?.from_path as string | undefined;
+      const toPath = request.params.arguments?.to_path as string | undefined;
+
+      if (!fromPath || typeof fromPath !== 'string') {
+        return {
+          content: [{ type: 'text', text: 'Error: Missing required parameter "from_path".' }],
+          isError: true,
+        };
+      }
+      if (!toPath || typeof toPath !== 'string') {
+        return {
+          content: [{ type: 'text', text: 'Error: Missing required parameter "to_path".' }],
+          isError: true,
+        };
+      }
+
+      const message = await godotClient.moveResource(fromPath, toPath);
       return {
         content: [
           {
